@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -1651,9 +1652,9 @@
       },
 
       players: [
-        { name: "ELI", position: "BTN", stack: 180, committed: 0, isTurn: false },
-        { name: "GINA", position: "SB", stack: 245, committed: 5, isTurn: true },
-        { name: "STEVE", position: "BB", stack: 210, committed: 20, isTurn: false }
+        { name: "ELI", position: "BTN", stack: 180, committed: 0, isTurn: false, folded: false },
+        { name: "GINA", position: "SB", stack: 245, committed: 5, isTurn: true, folded: false },
+        { name: "STEVE", position: "BB", stack: 210, committed: 20, isTurn: false, folded: false }
       ],
 
       board: [
@@ -1674,6 +1675,34 @@
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
     const money = (n) => `$${n}`;
+
+    function fireConfetti(){
+      if (typeof confetti !== "function") return;
+      const count = 200;
+      const defaults = { origin: { y: 0.6 }, colors: ["#003262", "#FDB515", "#22c55e", "#fff", "#ff6b6b"] };
+      confetti({ ...defaults, particleCount: count });
+      confetti({ ...defaults, particleCount: count * 0.6, spread: 100, scalar: 1.2 });
+      confetti({ ...defaults, particleCount: count * 0.4, angle: 60, spread: 55, origin: { x: 0 } });
+      confetti({ ...defaults, particleCount: count * 0.4, angle: 120, spread: 55, origin: { x: 1 } });
+    }
+
+    function heroWinsPot(){
+      state.hero.stack += state.pot;
+      state.pot = 0;
+      state.currentBet = 0;
+      state.previousBet = 0;
+      state.hero.committed = 0;
+      state.players.forEach(p => { p.committed = 0; p.folded = false; });
+      state.lastAction = { player: state.hero.name, text: "won", amount: 0 };
+      toast("YOU WIN!", "success");
+      fireConfetti();
+      renderAll();
+    }
+
+    function checkHeroWinsByAllFold(){
+      const opponentsLeft = state.players.filter(p => p.name !== state.hero.name && !p.folded);
+      if (opponentsLeft.length === 0) heroWinsPot();
+    }
 
     function streetLabel(street){
       switch(street){
@@ -1959,7 +1988,10 @@
     }
 
     function renderActionLine(){
-      els.actionLine.innerHTML = `<strong>${state.lastAction.player}</strong> ${state.lastAction.text} <span class="hl">${money(state.lastAction.amount)}</span>`;
+      const la = state.lastAction;
+      els.actionLine.innerHTML = la.text === "won"
+        ? `<strong>${la.player}</strong> won the pot!`
+        : `<strong>${la.player}</strong> ${la.text} <span class="hl">${money(la.amount)}</span>`;
     }
 
     const RANKING_ROWS = [
@@ -2152,9 +2184,19 @@
 
     function doFold(isAuto=false){
       endHeroTurn();
+      const p = state.players.find(x => x.name === state.hero.name);
+      if (p) p.folded = true;
       state.lastAction = { player: state.hero.name, text: isAuto ? "timed out (fold)" : "folded", amount: 0 };
       if (!isAuto) toast("FOLDED", "danger");
       renderAll();
+    }
+
+    function opponentFolds(name){
+      const p = state.players.find(x => x.name === name);
+      if (p) p.folded = true;
+      state.lastAction = { player: name, text: "folded", amount: 0 };
+      renderAll();
+      checkHeroWinsByAllFold();
     }
 
     function doCallOrCheck(isAuto=false){
@@ -2214,6 +2256,17 @@
       state.lastAction = { player: state.hero.name, text: (toCall <= 0 ? "bet" : "raised to"), amount: raiseTo };
       toast(`${toCall <= 0 ? "BET" : "RAISED TO"} ${money(raiseTo)}`, "success");
       renderAll();
+
+      setTimeout(() => {
+        const opponents = state.players.filter(p => p.name !== state.hero.name && !p.folded);
+        if (opponents.length === 0) return;
+        opponents.forEach((o, i) => {
+          setTimeout(() => {
+            opponentFolds(o.name);
+            if (i === opponents.length - 1) toast("Everyone folded!", "success");
+          }, i * 600);
+        });
+      }, 1500);
     }
 
     function quickSize(mult){
