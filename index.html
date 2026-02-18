@@ -1,0 +1,2388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Berkeley Poker — Live Table</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    :root{
+      /* Berkeley */
+      --cal-blue:#003262;
+      --cal-gold:#FDB515;
+      --cal-blue-dark:#001a3d;
+      --bg-deep:#000814;
+
+      /* Surfaces */
+      --surface-0: rgba(255,255,255,0.02);
+      --surface-1: rgba(255,255,255,0.035);
+      --surface-2: rgba(255,255,255,0.055);
+
+      /* Borders */
+      --border-1: rgba(255,255,255,0.08);
+      --border-2: rgba(255,255,255,0.12);
+
+      /* Text */
+      --text-1:#fff;
+      --text-2: rgba(255,255,255,0.72);
+      --text-3: rgba(255,255,255,0.46);
+
+      /* Functional */
+      --success:#22c55e;
+      --danger:#ef4444;
+      --warning:#f59e0b;
+
+      /* Radius */
+      --r-sm:10px;
+      --r-md:14px;
+      --r-lg:18px;
+      --r-xl:22px;
+      --r-pill:9999px;
+
+      /* Shadow */
+      --sh-1: 0 1px 2px rgba(0,0,0,0.35);
+      --sh-2: 0 6px 18px rgba(0,0,0,0.42);
+
+      /* Layout */
+      --gap: 16px;
+      --pad: 18px;
+      --pad-lg: 22px;
+
+      /* Middle section layout tokens */
+      --middle-gutter: 14px;
+      --middle-radius: var(--r-lg);
+      --middle-pad: 16px;
+
+      /* Table content width (make center feel less empty on big screens) */
+      --table-max: 680px;
+
+      /* Synced by JS */
+      --actionbar-h: 170px;
+      --topbar-h: 64px;
+
+      /* ✅ Advanced: board/hero ratio (desktop/tablet) */
+      --board-ratio: 0.62; /* 62% */
+      --hero-ratio: 0.38;  /* 38% */
+    }
+
+    html{ height: 100%; -webkit-text-size-adjust: 100%; }
+    body{
+      height: 100%;
+      font-family: "Work Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text-1);
+      background: radial-gradient(1200px 800px at 30% 10%, rgba(0,80,160,0.18), transparent 55%),
+                  linear-gradient(135deg, var(--cal-blue-dark) 0%, var(--bg-deep) 100%);
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.modal-open{ overflow: hidden; }
+
+    .mono{ font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    /* ====== APP ====== */
+    .app{
+      max-width: 1600px;
+      margin: 0 auto;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ====== TOPBAR (glass only here) ====== */
+    .topbar{
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 14px var(--pad-lg);
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border-1);
+      backdrop-filter: blur(10px);
+    }
+
+    .top-left{
+      display:flex;
+      align-items:center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .table-title{
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meta{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      color: var(--text-3);
+      font-size: 12px;
+      white-space: nowrap;
+      flex-wrap: wrap;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--border-1);
+      background: rgba(255,255,255,0.02);
+      color: var(--text-2);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .pill .dot{
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+    }
+
+    .street-badge{
+      border-color: rgba(253,181,21,0.25);
+      background: rgba(253,181,21,0.08);
+      color: rgba(255,255,255,0.88);
+    }
+
+    .pill-ranking{
+      border-color: rgba(253,181,21,0.32);
+      background: rgba(253,181,21,0.10);
+      color: rgba(255,255,255,0.92);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 120ms ease, background 140ms ease, border-color 140ms ease;
+    }
+    .pill-ranking:hover{
+      background: rgba(253,181,21,0.14);
+      border-color: rgba(253,181,21,0.45);
+    }
+    .pill-ranking:active{ transform: scale(0.98); }
+
+    .top-right{ display:flex; gap: 10px; align-items:center; }
+
+    .icon-btn{
+      width: 38px;
+      height: 38px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border-1);
+      background: var(--surface-2);
+      color: var(--text-2);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+    }
+    .icon-btn:hover{
+      background: rgba(255,255,255,0.07);
+      border-color: var(--border-2);
+      color: var(--text-1);
+    }
+    .icon-btn:active{ transform: scale(0.98); }
+    .icon-btn svg{ width:18px; height:18px; }
+
+    /* ====== SIDEBAR (StaggeredMenu-style) ====== */
+    .sidebar-wrapper{
+      position: fixed;
+      top: var(--topbar-h, 64px);
+      left: 0;
+      width: 100vw;
+      height: calc(100vh - var(--topbar-h, 64px));
+      z-index: 100;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .sidebar-wrapper[data-open]{ pointer-events: auto; }
+    .sidebar-prelayers{
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: clamp(260px, 38vw, 360px);
+      pointer-events: none;
+      z-index: 5;
+    }
+    .sidebar-prelayer{
+      position: absolute;
+      top: 0; left: 0;
+      height: 100%;
+      width: 100%;
+      transform: translateX(-100%);
+      transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    .sidebar-prelayer:nth-child(2){ transition-delay: 0.06s; }
+    .sidebar-prelayer:nth-child(3){ transition-delay: 0.12s; }
+    .sidebar-wrapper[data-open] .sidebar-prelayer{ transform: translateX(0); }
+    .sidebar-wrapper[data-open] .sidebar-prelayer:nth-child(2){ transition-delay: 0; }
+    .sidebar-wrapper[data-open] .sidebar-prelayer:nth-child(3){ transition-delay: 0.06s; }
+
+    .sidebar-panel{
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: clamp(260px, 38vw, 360px);
+      height: 100%;
+      background: linear-gradient(180deg, rgba(248,250,253,0.98) 0%, rgba(238,242,248,0.98) 100%);
+      border-right: 1px solid rgba(0,50,98,0.12);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 6em 2em 2em;
+      overflow-y: auto;
+      z-index: 10;
+      pointer-events: auto;
+      transform: translateX(-100%);
+      transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    .sidebar-wrapper[data-open] .sidebar-panel{ transform: translateX(0); transition-delay: 0.15s; }
+    .sidebar-inner{ flex: 1; display: flex; flex-direction: column; gap: 1rem; }
+    .sidebar-list{ list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+    .sidebar-item-wrap{ overflow: hidden; line-height: 1; }
+    .sidebar-item{
+      display: inline-block;
+      color: #111;
+      font-weight: 800;
+      font-size: 2.5rem;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding-right: 1.2em;
+      position: relative;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+    .sidebar-item:hover{ color: var(--cal-gold); }
+    .sidebar-item-label{ display: inline-block; transform-origin: 50% 100%; }
+    .sidebar-list[data-numbering]{ counter-reset: sidebarItem; }
+    .sidebar-list[data-numbering] .sidebar-item::after{
+      counter-increment: sidebarItem;
+      content: counter(sidebarItem, decimal-leading-zero);
+      position: absolute;
+      top: 0.1em; right: 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--cal-gold);
+      opacity: 0;
+      transition: opacity 0.4s ease 0.3s;
+    }
+    .sidebar-wrapper[data-open] .sidebar-list[data-numbering] .sidebar-item::after{ opacity: 1; }
+
+    .sidebar-footer{
+      margin-top: auto;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(0,50,98,0.1);
+    }
+    .sidebar-item-exit{
+      color: var(--danger) !important;
+      font-size: 1.5rem;
+    }
+    .sidebar-item-exit:hover{ color: #dc2626 !important; }
+
+    .sidebar-toggle .sidebar-icon{ transition: transform 0.35s ease; }
+    body.sidebar-open .sidebar-toggle .sidebar-icon{ transform: rotate(90deg); }
+
+    @media (max-width: 640px){
+      .sidebar-prelayers,
+      .sidebar-panel{ width: min(320px, 100vw); }
+    }
+
+    /* ====== MAIN LAYOUT ====== */
+    main{
+      flex: 1 1 0;
+      display: grid;
+      min-height: 300px;
+      padding: var(--pad-lg);
+      padding-bottom: calc(var(--actionbar-h) + 22px + env(safe-area-inset-bottom));
+      gap: var(--middle-gutter);
+
+      grid-template-areas: "players table";
+      grid-template-columns: clamp(300px, 22vw, 340px) 1fr;
+
+      align-content: stretch;
+    }
+
+    .seats{ grid-area: players; min-height: 0; }
+    .table{ grid-area: table; min-height: 0; }
+
+    /* Tablet */
+    @media (max-width: 1199px){
+      main{
+        grid-template-columns: clamp(240px, 22vw, 280px) 1fr;
+        padding: 14px var(--pad-lg);
+        padding-bottom: calc(var(--actionbar-h) + 20px + env(safe-area-inset-bottom));
+      }
+    }
+
+    /* Mobile */
+    @media (max-width: 767px){
+      main{
+        grid-template-areas:
+          "table"
+          "players";
+        grid-template-columns: 1fr;
+        padding: 10px 12px;
+        padding-bottom: calc(var(--actionbar-h) + 16px + env(safe-area-inset-bottom));
+      }
+    }
+
+    /* ====== PANELS ====== */
+    .panel{
+      background: var(--surface-1);
+      border: 1px solid var(--border-1);
+      border-radius: var(--middle-radius);
+      padding: var(--middle-pad);
+      min-height: 0;
+    }
+
+    .board,
+    .hero{
+      background: var(--surface-1);
+      border: 1px solid var(--border-1);
+      border-radius: var(--middle-radius);
+      padding: var(--middle-pad);
+      min-height: 0;
+      overflow: hidden;
+    }
+    .board{ border-radius: var(--r-xl); }
+    .hero{ border-radius: var(--middle-radius); }
+
+    .panel-title{
+      font-size: 12px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-1);
+      margin-bottom: 10px;
+    }
+
+    /* ====== TABLE COLUMN: board + hero ======
+       ✅ Advanced fix: give the table a REAL height and split 62/38
+       so Board + Your Cards never "crash" into each other on desktop.
+    */
+    .table{
+      display: grid;
+      gap: var(--middle-gutter);
+
+      /* This makes % rows meaningful */
+      height: calc(
+        100dvh
+        - var(--topbar-h)
+        - var(--actionbar-h)
+        - (2 * var(--pad-lg))
+        - env(safe-area-inset-bottom)
+      );
+
+      /* Avoid over-aggressive stretching when content is small */
+      align-content: start;
+
+      /* 62% / 38% with sane minimums */
+      grid-template-rows:
+        minmax(240px, calc(100% * var(--board-ratio)))
+        minmax(180px, calc(100% * var(--hero-ratio)));
+    }
+
+    /* Tablet: slightly smaller mins to keep breathing room */
+    @media (max-width: 1199px){
+      .table{
+        height: calc(
+          100dvh
+          - var(--topbar-h)
+          - var(--actionbar-h)
+          - (2 * 14px)     /* main padding on tablet is 14px top/bottom */
+          - env(safe-area-inset-bottom)
+        );
+        grid-template-rows:
+          minmax(220px, calc(100% * var(--board-ratio)))
+          minmax(160px, calc(100% * var(--hero-ratio)));
+      }
+    }
+
+    /* Mobile: let content flow naturally (stacking is fine) */
+    @media (max-width: 767px){
+      .table{
+        height: auto;
+        grid-template-rows: auto auto;
+      }
+    }
+
+    /* ====== SEATS / PLAYERS ====== */
+    .seats{
+      display:flex;
+      flex-direction:column;
+    }
+    .seat-list{
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 2px;
+    }
+    .seat-list::-webkit-scrollbar{ width: 6px; }
+    .seat-list::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.10); border-radius: 999px; }
+
+    .seat{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border-1);
+      border-radius: var(--r-md);
+      padding: 10px;
+    }
+
+    .seat.turn{
+      border-color: rgba(34,197,94,0.35);
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.08) inset;
+    }
+
+    .avatar{
+      width: 44px; height:44px;
+      border-radius: var(--r-md);
+      background: rgba(0,64,128,0.65);
+      border: 1px solid rgba(255,255,255,0.10);
+      display:grid;
+      place-items:center;
+      flex: 0 0 auto;
+    }
+    .avatar svg{ width:24px; height:24px; opacity:0.9; }
+
+    .seat-main{ flex:1; min-width:0; }
+    .seat-name{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .pos{
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: var(--text-2);
+    }
+
+    .stack{
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+
+    .seat-right{
+      text-align:right;
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      align-items:flex-end;
+    }
+
+    .turn-tag{
+      display:inline-flex;
+      gap: 8px;
+      align-items:center;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: rgba(255,255,255,0.9);
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.35);
+      padding: 4px 8px;
+      border-radius: var(--r-pill);
+    }
+    .turn-tag .t{
+      padding: 2px 7px;
+      border-radius: var(--r-pill);
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.92);
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: 0.02em;
+    }
+    .turn-tag.warn{ background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.35); }
+    .turn-tag.danger{ background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.35); }
+
+    .rt-wrap{ display: inline-flex; overflow: hidden; }
+    .rt-inner{ display: inline-flex; flex-wrap: wrap; position: relative; }
+    .rt-word{ display: inline-flex; overflow: hidden; }
+    .rt-char{
+      display: inline-block;
+      transform: translateY(100%);
+      animation: rt-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    .rt-char.rt-exit{ animation: rt-exit 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    .rt-space{ white-space: pre; }
+    @keyframes rt-enter{
+      from{ transform: translateY(100%); opacity: 0; }
+      to{ transform: translateY(0); opacity: 1; }
+    }
+    @keyframes rt-exit{
+      from{ transform: translateY(0); opacity: 1; }
+      to{ transform: translateY(-120%); opacity: 0; }
+    }
+
+    /* Mobile players become horizontal strip */
+    @media (max-width: 767px){
+      .seat-list{
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+      }
+      .seat-list::-webkit-scrollbar{ height: 4px; }
+      .seat{
+        flex: 0 0 auto;
+        min-width: 140px;
+      }
+    }
+
+    /* ====== BOARD ====== */
+    .board{
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+      min-height: 0;
+      padding: 14px; /* ✅ slightly tighter to reduce vertical pressure */
+    }
+
+    .board .cards,
+    .board .action-line{
+      max-width: var(--table-max);
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .board-top{
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .board-top .small{
+      color: var(--text-3);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .pot{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: var(--r-pill);
+      border: 2px solid rgba(253,181,21,0.65);
+      background: rgba(253,181,21,0.10);
+      box-shadow: var(--sh-1);
+    }
+
+    .pot .chip{
+      width: 24px; height:24px;
+      border-radius: 50%;
+      background: var(--cal-gold);
+      display:grid; place-items:center;
+      color: var(--cal-blue);
+      box-shadow: 0 0 0 3px rgba(253,181,21,0.15);
+    }
+    .pot .chip svg{ width:14px; height:14px; }
+
+    .pot-amt{
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--cal-gold);
+      letter-spacing: -0.02em;
+    }
+
+    .cards{
+      display:flex;
+      justify-content:center;
+      gap: 10px;
+      flex-wrap: nowrap;
+      flex: 1;
+      align-items: center;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .card{
+      width: 72px;   /* ✅ tiny shrink to keep spacing clean */
+      height: 104px; /* ✅ tiny shrink to keep spacing clean */
+      border-radius: var(--r-md);
+      background: #fff;
+      box-shadow: var(--sh-2);
+      display:flex;
+      flex-direction:column;
+      padding: 10px;
+      font-weight: 900;
+      user-select:none;
+      flex: 0 0 auto;
+    }
+    .card.red{ color:#dc2626; }
+    .card.black{ color:#171717; }
+    .rank{ font-size: 18px; line-height:1; }
+    .suit{ font-size: 34px; margin-top:auto; line-height:1; }
+
+    .card.back{
+      background: linear-gradient(135deg, rgba(0,50,98,0.9), rgba(0,26,61,0.9));
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: var(--sh-2);
+      position:relative;
+      overflow:hidden;
+    }
+    .card.back:before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background: radial-gradient(circle at 30% 30%, rgba(253,181,21,0.16), transparent 55%),
+                  repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 8px, transparent 8px 16px);
+      transform: rotate(8deg);
+    }
+    .card.back:after{
+      content:"";
+      position:absolute;
+      inset:10px;
+      border-radius: 12px;
+      border: 1px solid rgba(253,181,21,0.28);
+    }
+    .card.back.future{
+      height: 98px; /* base card is 104px */
+    }
+
+    .action-line{
+      color: var(--text-2);
+      font-size: 13px;
+      text-align:center;
+      padding-bottom: 2px;
+    }
+    .action-line strong{ color: rgba(255,255,255,0.92); font-weight:900; }
+    .action-line .hl{ color: var(--cal-gold); font-weight: 900; }
+
+    /* ====== HERO HAND ====== */
+    .hero{
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 14px; /* ✅ tighter */
+    }
+
+    .hero-head{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero-head .label{
+      color: var(--text-3);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .hero-stack{
+      display:flex;
+      align-items:baseline;
+      gap: 10px;
+    }
+    .hero-stack .k{ color: var(--text-3); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing:0.08em; }
+    .hero-stack .v{ color: var(--cal-gold); font-size: 18px; font-weight: 900; }
+
+    .hero-cards{
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex: 1;
+      align-items: center;
+      min-height: 0;
+    }
+
+    .hero .card{ width: 84px; height: 122px; } /* ✅ slight shrink */
+
+    /* ===== Rank sheet ===== */
+    .rank-sheet{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+
+    .rank-row{
+      display:flex;
+      gap: 12px;
+      align-items:center;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .rank-row.active{
+      border-color: rgba(253,181,21,0.55);
+      background: rgba(253,181,21,0.10);
+    }
+
+    .rank-left{
+      width: 150px;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 140px;
+    }
+
+    .rank-num{
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.10);
+      display:grid;
+      place-items:center;
+      font-weight: 1000;
+      font-size: 12px;
+      color: rgba(255,255,255,0.90);
+      flex: 0 0 auto;
+    }
+
+    .rank-name{
+      font-weight: 1000;
+      letter-spacing: 0.02em;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.92);
+      line-height: 1.1;
+    }
+
+    .rank-sub{
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 2px;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      font-weight: 800;
+    }
+
+    .rank-cards{
+      display:flex;
+      gap: 5px;
+      flex-wrap: nowrap;
+      justify-content:flex-end;
+      margin-left:auto;
+    }
+
+    .card.sm{
+      width: 28px;
+      height: 40px;
+      padding: 4px;
+      border-radius: 6px;
+      box-shadow: var(--sh-1);
+    }
+    .card.sm .rank{ font-size: 10px; }
+    .card.sm .suit{ font-size: 12px; }
+
+    .ranks-modal-sheet .card.sm{
+      width: 52px;
+      height: 76px;
+      padding: 8px;
+      border-radius: 10px;
+    }
+    .ranks-modal-sheet .card.sm .rank{ font-size: 16px; }
+    .ranks-modal-sheet .card.sm .suit{ font-size: 24px; }
+    .ranks-modal-sheet .rank-cards{ gap: 10px; }
+    .ranks-modal-sheet .rank-left{ min-width: 180px; }
+    .ranks-modal-sheet .rank-name{ font-size: 14px; }
+    .ranks-modal-sheet .rank-sub{ font-size: 12px; }
+
+    .ranks-legend{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin: 8px 0 12px;
+      color: var(--text-3);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .legend-chip{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: var(--r-pill);
+      border: 1px solid rgba(253,181,21,0.25);
+      background: rgba(253,181,21,0.08);
+      color: rgba(255,255,255,0.86);
+    }
+
+    /* ====== Full-screen Rankings Modal ====== */
+    .ranks-overlay{
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--pad-lg);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease;
+    }
+    .ranks-overlay.active{
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .ranks-modal{
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: rgba(0,26,61,0.96);
+      border: 1px solid var(--border-2);
+      border-radius: var(--r-xl);
+      padding: var(--pad-lg);
+      box-shadow: var(--sh-2);
+    }
+    @media (max-width: 640px){
+      .ranks-overlay{ padding: 12px; }
+      .ranks-modal{ padding: 14px; max-height: 85vh; }
+      .ranks-modal-title{ font-size: 16px; }
+    }
+
+    .ranks-modal-head{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-1);
+    }
+
+    .ranks-modal-title{
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.95);
+    }
+
+    .ranks-close{
+      font-size: 24px;
+      line-height: 1;
+      padding: 4px;
+    }
+
+    /* ====== ACTION BAR ====== */
+    .actionbar{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      background: rgba(255,255,255,0.03);
+      border-top: 1px solid var(--border-1);
+      backdrop-filter: blur(12px);
+      padding: 14px var(--pad-lg);
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    }
+
+    .actionwrap{
+      max-width: 1600px;
+      margin: 0 auto;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .decision-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+
+    .decision-stats{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .ds{
+      display:inline-flex;
+      align-items:baseline;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border-1);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .ds .k{
+      color: var(--text-3);
+      font-size: 11px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space:nowrap;
+    }
+
+    .ds b{
+      color: rgba(255,255,255,0.92);
+      font-weight: 1000;
+      white-space:nowrap;
+    }
+    .ds-hand{
+      cursor: pointer;
+      border-radius: var(--r-sm);
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .ds-hand:hover{
+      background: rgba(253,181,21,0.12);
+      border-color: rgba(253,181,21,0.25);
+    }
+    .ds-hand:focus-visible{ outline: 2px solid var(--cal-gold); outline-offset: 2px; }
+
+    .gold{ color: var(--cal-gold); }
+
+    .turn-timer{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border-1);
+      background: rgba(255,255,255,0.02);
+      flex: 1 1 360px;
+      min-width: 280px;
+    }
+    .turn-timer .label{
+      color: var(--text-3);
+      font-size: 11px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space:nowrap;
+    }
+    .turn-timer .time{
+      color: rgba(255,255,255,0.92);
+      font-weight: 1000;
+      white-space:nowrap;
+    }
+    .turn-timer .track{
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      overflow:hidden;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .turn-timer .fill{
+      height: 100%;
+      width: 100%;
+      background: rgba(34,197,94,0.9);
+      border-radius: 999px;
+      transition: width 120ms linear, background 120ms linear;
+    }
+
+    @media (max-width: 640px){
+      .turn-timer{ flex: 1 1 100%; min-width: 0; }
+    }
+
+    .bet-row{
+      display:flex;
+      gap: 12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .raise-box{
+      flex: 1 1 520px;
+      min-width: 280px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      padding: 12px;
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border-1);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .raise-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+
+    .raise-label{
+      color: var(--text-3);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .raise-inputwrap{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+
+    .raise-input{
+      width: 140px;
+      height: 44px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border-2);
+      background: var(--surface-2);
+      color: var(--text-1);
+      font-size: 18px;
+      font-weight: 900;
+      padding: 0 12px 0 34px;
+      outline:none;
+      transition: border-color 140ms ease;
+    }
+    .raise-input:focus{ border-color: rgba(253,181,21,0.7); }
+
+    .prefix{
+      position:relative;
+      margin-right:-30px;
+      left: 10px;
+      color: var(--cal-gold);
+      font-weight: 900;
+      pointer-events:none;
+      z-index: 1;
+    }
+
+    .raise-spinner{
+      display:flex;
+      flex-direction:column;
+      gap: 0;
+      border: 1px solid var(--border-2);
+      border-radius: var(--r-md);
+      overflow:hidden;
+      flex-shrink: 0;
+    }
+
+    .spinner-btn{
+      width: 28px;
+      height: 22px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: var(--surface-2);
+      border: none;
+      border-bottom: 1px solid var(--border-1);
+      color: var(--text-2);
+      font-size: 10px;
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease;
+      padding: 0;
+      line-height: 1;
+    }
+    .spinner-btn:last-child{ border-bottom: none; }
+    .spinner-btn:hover{
+      background: rgba(255,255,255,0.08);
+      color: var(--text-1);
+    }
+    .spinner-btn:active{ background: rgba(253,181,21,0.15); color: var(--cal-gold); }
+
+    .raise-limits{
+      color: var(--text-3);
+      font-size: 12px;
+      white-space:nowrap;
+    }
+
+    .slider-wrap{
+      position: relative;
+      width: 100%;
+      height: 24px;
+      display: flex;
+      align-items: center;
+    }
+
+    .slider-track{
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      overflow: hidden;
+    }
+
+    .slider-fill{
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      background: rgba(255,255,255,0.35);
+      border-radius: 999px;
+      transition: width 80ms ease;
+    }
+
+    .slider{
+      position: relative;
+      width: 100%;
+      height: 24px;
+      margin: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    .slider::-webkit-slider-runnable-track{
+      height: 8px;
+      background: transparent;
+    }
+    .slider::-webkit-slider-thumb{
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      border: 2px solid rgba(255,255,255,0.6);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      margin-top: -5px;
+      cursor: grab;
+      transition: transform 120ms ease, border-color 120ms ease;
+    }
+    .slider::-webkit-slider-thumb:hover{
+      border-color: rgba(253,181,21,0.7);
+      transform: scale(1.08);
+    }
+    .slider::-webkit-slider-thumb:active{ cursor: grabbing; }
+    .slider::-moz-range-track{ background: transparent; height: 8px; }
+    .slider::-moz-range-thumb{
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      border: 2px solid rgba(255,255,255,0.6);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      cursor: grab;
+    }
+    .slider::-moz-range-thumb:hover{ border-color: rgba(253,181,21,0.7); }
+
+    .pills{
+      display:flex;
+      gap: 8px;
+      flex-wrap:wrap;
+    }
+
+    .pill-btn{
+      border-radius: 12px;
+      border: 1px solid var(--border-2);
+      background: var(--surface-2);
+      color: var(--text-2);
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor:pointer;
+      transition: transform 120ms ease, background 140ms ease, border-color 140ms ease, color 140ms ease;
+      user-select:none;
+    }
+    .pill-btn:hover{
+      border-color: rgba(253,181,21,0.55);
+      color: rgba(255,255,255,0.92);
+    }
+    .pill-btn:active{ transform: scale(0.98); }
+
+    .btns{
+      flex: 1 1 420px;
+      min-width: 280px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn{
+      height: 56px;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--border-2);
+      background: var(--surface-2);
+      color: rgba(255,255,255,0.92);
+      font-weight: 1000;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor:pointer;
+      transition: transform 120ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      user-select:none;
+    }
+    .btn:active{ transform: scale(0.985); }
+    .btn:disabled{ opacity: 0.42; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    .btn-fold{
+      background: #221629;
+      border-color: rgba(255, 68, 86, 0.4);
+      color: #FF4456;
+      box-shadow: 0 0 14px rgba(255, 68, 86, 0.25);
+    }
+    .btn-fold:hover:not(:disabled){ background: #2a1d35; box-shadow: 0 0 18px rgba(255, 68, 86, 0.35); }
+
+    .btn-call{
+      background: #1A2234;
+      border-color: rgba(134, 150, 181, 0.4);
+      color: #D3DAE4;
+      box-shadow: 0 0 14px rgba(134, 150, 181, 0.2);
+    }
+    .btn-call:hover:not(:disabled){ background: #232d42; box-shadow: 0 0 18px rgba(134, 150, 181, 0.3); }
+
+    .btn-raise{
+      background: #F1B733;
+      border: none;
+      color: #1A2234;
+      box-shadow: var(--sh-1);
+    }
+    .btn-raise .amt{ color: #fff; }
+    .btn-raise:hover:not(:disabled){ background: #f5c64a; }
+
+    .btn .amt{ font-weight: 1000; }
+    .btn .sub{ font-size: 12px; font-weight: 900; opacity: 0.85; }
+
+    @media (max-width: 640px){
+      .btns{ grid-template-columns: 1fr 1fr; }
+      .btn-raise{ grid-column: 1 / -1; }
+    }
+
+    /* ====== TOAST ====== */
+    .toast{
+      position: fixed;
+      top: 18%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-weight: 1000;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      z-index: 200;
+      opacity: 0;
+      transition: opacity 180ms ease, transform 180ms ease;
+      box-shadow: var(--sh-2);
+      pointer-events:none;
+    }
+    .toast.show{ opacity: 1; transform: translate(-50%, -56%); }
+
+    :focus-visible{
+      outline: 2px solid rgba(253,181,21,0.75);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+    }
+
+    /* ====== Floating Ranking (mobile only) ====== */
+    .floating-ranking{
+      display: none !important;
+      position: fixed;
+      right: 12px;
+      bottom: calc(var(--actionbar-h) + 12px + env(safe-area-inset-bottom));
+      z-index: 70;
+      padding: 10px 14px;
+      border-radius: var(--r-pill);
+      border: 1px solid rgba(253,181,21,0.5);
+      background: rgba(253,181,21,0.15);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      backdrop-filter: blur(8px);
+    }
+    .floating-ranking:active{ transform: scale(0.96); }
+
+    /* ====== MOBILE COMPACT ====== */
+    @media (max-width: 640px){
+      .floating-ranking{ display: block !important; }
+      .topbar .pill-ranking{ display: none; }
+
+      .topbar{ padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
+      .top-left{ flex: 1 1 100%; min-width: 0; }
+      .table-title{ font-size: 15px; }
+      .meta{
+        gap: 6px;
+        font-size: 11px;
+        flex-wrap: wrap;
+      }
+      .pill{ padding: 5px 8px; font-size: 10px; gap: 6px; }
+
+      :root{ --middle-gutter: 10px; --middle-pad: 12px; --table-max: 100%; }
+
+      .panel{ padding: 12px; border-radius: 14px; }
+      .panel-title{ font-size: 11px; padding-bottom: 8px; margin-bottom: 10px; }
+
+      .seat{ padding: 10px; gap: 10px; }
+      .avatar{ width: 36px; height: 36px; }
+      .avatar svg{ width: 20px; height: 20px; }
+      .seat-name{ font-size: 13px; }
+      .pos{ font-size: 9px; padding: 2px 5px; }
+      .stack{ font-size: 12px; }
+      .turn-tag{ font-size: 10px; padding: 3px 6px; }
+
+      .board{ padding: 14px; gap: 10px; border-radius: 16px; }
+      .board-top{ flex-wrap: wrap; gap: 8px; }
+      .board-top .small{ font-size: 10px; }
+      .pot{ padding: 6px 10px; }
+      .pot .chip{ width: 20px; height: 20px; }
+      .pot .chip svg{ width: 12px; height: 12px; }
+      .pot-amt{ font-size: 22px; }
+
+      .cards{ gap: 6px; justify-content: center; }
+      .action-line{ font-size: 12px; }
+
+      .card, .card.back{ width: 56px; height: 82px; padding: 8px; }
+      .card.back.future{ height: 76px; }
+      .card .rank{ font-size: 14px; }
+      .card .suit{ font-size: 24px; }
+      .hero .card{ width: 68px; height: 96px; }
+      .hero .card .rank{ font-size: 16px; }
+      .hero .card .suit{ font-size: 28px; }
+
+      .hero{ padding: 12px; }
+      .hero-head .label, .hero-stack .k{ font-size: 10px; }
+      .hero-stack .v{ font-size: 16px; }
+      .hero-cards{ gap: 10px; }
+
+      .actionbar{ padding: 10px 12px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+      .actionwrap{ gap: 10px; }
+      .decision-top{ flex-direction: column; gap: 8px; align-items: stretch; }
+      .decision-stats{ gap: 8px; flex-wrap: wrap; }
+      .ds{ padding: 6px 8px; font-size: 10px; }
+      .ds .k{ font-size: 10px; }
+      .turn-timer{ padding: 8px 10px; min-width: 0; }
+      .turn-timer .label{ font-size: 10px; }
+      .bet-row{ flex-direction: column; gap: 10px; }
+      .raise-box{ min-width: 0; padding: 10px; }
+      .raise-top{ flex-direction: column; align-items: stretch; gap: 8px; }
+      .raise-inputwrap{ width: 100%; }
+      .raise-input{ width: 100%; max-width: 140px; height: 40px; font-size: 16px; }
+      .raise-limits{ font-size: 11px; }
+      .pills{ gap: 6px; }
+      .pill-btn{ padding: 6px 8px; font-size: 11px; }
+      .btns{ min-width: 0; gap: 8px; }
+      .btn{ height: 48px; font-size: 13px; }
+    }
+
+    @media (max-width: 480px){
+      .floating-ranking{ right: 10px; bottom: calc(var(--actionbar-h) + 8px + env(safe-area-inset-bottom)); padding: 8px 12px; font-size: 11px; }
+      .card, .card.back{ width: 50px; height: 72px; padding: 6px; }
+      .card.back.future{ height: 66px; }
+      .card .rank{ font-size: 12px; }
+      .card .suit{ font-size: 20px; }
+      .hero .card{ width: 58px; height: 84px; }
+      .hero .card .rank{ font-size: 14px; }
+      .hero .card .suit{ font-size: 22px; }
+      .pot-amt{ font-size: 20px; }
+
+      .raise-box .slider-wrap{ display: none; }
+      .btn{ height: 44px; font-size: 12px; }
+    }
+
+    @media (max-width: 400px){
+      .topbar{ padding: 8px 10px; }
+      .meta{ font-size: 10px; }
+      .pill{ padding: 4px 6px; font-size: 9px; }
+      .pill-ranking{ font-size: 10px; padding: 5px 8px; }
+      .seat-name{ font-size: 12px; }
+      .stack{ font-size: 11px; }
+      .btn{ height: 44px; font-size: 12px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- SIDEBAR (StaggeredMenu-style) -->
+    <div class="sidebar-wrapper" id="sidebarWrapper">
+      <div class="sidebar-prelayers" id="sidebarPrelayers" aria-hidden="true">
+        <div class="sidebar-prelayer" style="background: var(--cal-blue);"></div>
+        <div class="sidebar-prelayer" style="background: var(--cal-blue-dark);"></div>
+        <div class="sidebar-prelayer" style="background: rgba(253,181,21,0.15);"></div>
+      </div>
+      <aside class="sidebar-panel" id="sidebarPanel" aria-hidden="true" aria-label="Navigation menu">
+        <div class="sidebar-inner">
+          <ul class="sidebar-list" data-numbering>
+            <li class="sidebar-item-wrap"><a class="sidebar-item" href="#" data-action="table"><span class="sidebar-item-label">Table</span></a></li>
+            <li class="sidebar-item-wrap"><a class="sidebar-item" href="#" data-action="ranking"><span class="sidebar-item-label">Ranking</span></a></li>
+            <li class="sidebar-item-wrap"><a class="sidebar-item" href="#" data-action="rules"><span class="sidebar-item-label">Rules</span></a></li>
+          </ul>
+          <div class="sidebar-footer">
+            <a class="sidebar-item sidebar-item-exit" href="#" data-action="leave"><span class="sidebar-item-label">Leave Game</span></a>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="top-left">
+        <button class="icon-btn sidebar-toggle" id="sidebarToggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebarPanel" type="button">
+          <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+          </svg>
+        </button>
+        <div class="table-title">Berkeley Poker</div>
+
+        <div class="meta">
+          <span id="handMeta" class="mono">Hand #96</span>
+          <span class="pill street-badge" id="streetBadge">FLOP</span>
+          <span class="pill" title="Connection status">
+            <span class="dot"></span>
+            <span>Live</span>
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <main>
+      <!-- SEATS -->
+      <aside class="panel seats">
+        <div class="panel-title" id="playersTitle">Players</div>
+        <div class="seat-list" id="seatList"></div>
+      </aside>
+
+      <!-- TABLE -->
+      <section class="table" aria-label="Table column">
+        <div class="board">
+          <div class="board-top">
+            <div class="small" id="streetLabel">Community Cards</div>
+
+            <div class="pot" aria-label="Pot">
+              <div class="chip" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" stroke="currentColor" stroke-width="2"/>
+                  <path d="M12 7v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M7 12h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="pot-amt mono" id="potAmount">$35</div>
+            </div>
+          </div>
+
+          <div class="cards" id="boardCards" aria-label="Board cards"></div>
+
+          <div class="action-line" id="actionLine">
+            <strong>STEVE</strong> raised to <span class="hl">$20</span>
+          </div>
+        </div>
+
+        <div class="hero">
+          <div class="hero-head">
+            <div class="label">Your Cards</div>
+            <div class="hero-stack">
+              <span class="k">Stack</span>
+              <span class="v mono" id="heroStackTop">$245</span>
+            </div>
+          </div>
+
+          <div class="hero-cards" id="heroCards"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Full-screen Rankings Modal -->
+    <div class="ranks-overlay" id="ranksOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="ranksModalTitle">
+      <div class="ranks-modal" id="ranksModal">
+        <div class="ranks-modal-head">
+          <h2 class="ranks-modal-title" id="ranksModalTitle">Hand Rankings</h2>
+          <button class="icon-btn ranks-close" id="ranksClose" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="ranks-legend">
+          <span>Best</span>
+          <span class="legend-chip">Highlighted = your current category</span>
+          <span>Weakest</span>
+        </div>
+        <div class="rank-sheet ranks-modal-sheet" id="rankSheet"></div>
+      </div>
+    </div>
+
+    <!-- ACTION BAR -->
+    <footer class="actionbar" role="contentinfo">
+      <div class="actionwrap">
+        <div class="decision-top">
+          <div class="decision-stats" aria-label="Decision stats">
+            <span class="ds">
+              <span class="k">Odds</span>
+              <b class="mono" id="potOddsSummary">2.33:1</b>
+            </span>
+
+            <span class="ds ds-hand" id="handRankingTrigger" role="button" tabindex="0" aria-label="View hand ranking" title="Click to view hand ranking">
+              <span class="k">Hand</span>
+              <b class="mono" id="madeHandSummary">ONE PAIR</b>
+            </span>
+
+            <span class="ds">
+              <span class="k" id="minRaiseLabel">Min Raise</span>
+              <b class="mono gold" id="minRaiseSummary">$30</b>
+            </span>
+          </div>
+
+          <div class="turn-timer" aria-label="Turn timer">
+            <span class="label">Time</span>
+            <span class="time mono" id="timerVal">20s</span>
+            <div class="track" aria-hidden="true">
+              <div class="fill" id="timerFill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bet-row">
+          <div class="raise-box">
+            <div class="raise-top">
+              <div class="raise-label" id="raiseLabel">Raise to</div>
+
+              <div class="raise-inputwrap">
+                <span class="prefix mono">$</span>
+                <input class="raise-input mono" id="raiseInput" type="number" inputmode="numeric" />
+                <div class="raise-spinner" role="group" aria-label="Adjust amount">
+                  <button type="button" class="spinner-btn" id="raiseUp" aria-label="Increase">▲</button>
+                  <button type="button" class="spinner-btn" id="raiseDown" aria-label="Decrease">▼</button>
+                </div>
+                <div class="raise-limits mono" id="raiseLimits">min 30 · max 250</div>
+              </div>
+            </div>
+
+            <div class="slider-wrap">
+              <div class="slider-track" aria-hidden="true">
+                <div class="slider-fill" id="sliderFill"></div>
+              </div>
+              <input class="slider" id="raiseSlider" type="range" />
+            </div>
+
+            <div class="pills" aria-label="Quick bet sizes">
+              <button class="pill-btn" data-mult="0.5">½ Pot</button>
+              <button class="pill-btn" data-mult="1">Pot</button>
+              <button class="pill-btn" data-mult="2">2× Pot</button>
+              <button class="pill-btn" data-mult="max">Max</button>
+            </div>
+          </div>
+
+          <div class="btns">
+            <button class="btn btn-fold" id="btnFold">Fold</button>
+            <button class="btn btn-call" id="btnCall">Call <span class="amt mono">$15</span></button>
+            <button class="btn btn-raise" id="btnRaise">Raise to <span class="amt mono">$40</span></button>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast"></div>
+
+  </div>
+
+  <script>
+    const SUITS = { h: "♥", d: "♦", c: "♣", s: "♠" };
+    const COLORS = { h: "red", d: "red", c: "black", s: "black" };
+    const RANK_VAL = { "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"J":11,"Q":12,"K":13,"A":14 };
+
+    const state = {
+      handNumber: 96,
+      street: "FLOP",
+      blinds: { sb: 5, bb: 10 },
+
+      pot: 35,
+      currentBet: 20,
+      previousBet: 10,
+      lastAction: { player: "STEVE", text: "raised to", amount: 20 },
+
+      hero: {
+        name: "GINA",
+        position: "SB",
+        stack: 245,
+        committed: 5,
+        cards: [{ r: "J", s: "c" }, { r: "J", s: "h" }],
+        isTurn: true
+      },
+
+      players: [
+        { name: "ELI", position: "BTN", stack: 180, committed: 0, isTurn: false },
+        { name: "GINA", position: "SB", stack: 245, committed: 5, isTurn: true },
+        { name: "STEVE", position: "BB", stack: 210, committed: 20, isTurn: false }
+      ],
+
+      board: [
+        { r: "2", s: "h" },
+        { r: "K", s: "c" },
+        { r: "8", s: "d" },
+        null,
+        null
+      ],
+
+      turnTimer: {
+        total: 20,
+        left: 20,
+        running: false,
+        _interval: null
+      }
+    };
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+    const money = (n) => `$${n}`;
+
+    function streetLabel(street){
+      switch(street){
+        case "PRE_FLOP": return "PRE-FLOP";
+        case "FLOP": return "FLOP";
+        case "TURN": return "TURN";
+        case "RIVER": return "RIVER";
+        default: return street;
+      }
+    }
+
+    function visibleBoardCount(){
+      if (state.street === "PRE_FLOP") return 0;
+      if (state.street === "FLOP") return 3;
+      if (state.street === "TURN") return 4;
+      if (state.street === "RIVER") return 5;
+      return 0;
+    }
+
+    function getToCall() {
+      return Math.max(0, state.currentBet - state.hero.committed);
+    }
+
+    function getLastRaiseSize() {
+      return Math.max(0, state.currentBet - state.previousBet);
+    }
+
+    function getMinRaiseTo() {
+      const lastRaise = getLastRaiseSize() || state.blinds.bb;
+      return state.currentBet + lastRaise;
+    }
+
+    function getMaxRaiseTo() {
+      return state.hero.committed + state.hero.stack;
+    }
+
+    function getPotOddsText() {
+      const toCall = getToCall();
+      if (toCall <= 0) return "—";
+      return `${(state.pot / toCall).toFixed(2)}:1`;
+    }
+
+    function evaluateCategory(allCards){
+      const cards = allCards.filter(Boolean);
+      if (cards.length < 2) return { cat: 10, name: "High Card" };
+
+      const rankCounts = new Map();
+      const suitCounts = new Map();
+      const ranks = [];
+      for (const c of cards){
+        const v = RANK_VAL[c.r];
+        ranks.push(v);
+        rankCounts.set(v, (rankCounts.get(v) || 0) + 1);
+        suitCounts.set(c.s, (suitCounts.get(c.s) || 0) + 1);
+      }
+
+      const uniqueRanks = Array.from(new Set(ranks)).sort((a,b)=>a-b);
+      function hasStraight(vals){
+        const set = new Set(vals);
+        const list = Array.from(set).sort((a,b)=>a-b);
+        if (set.has(14)) list.unshift(1);
+
+        let run = 1;
+        for (let i=1;i<list.length;i++){
+          if (list[i] === list[i-1] + 1){
+            run++;
+            if (run >= 5) return { ok:true, high:list[i] };
+          } else if (list[i] !== list[i-1]) {
+            run = 1;
+          }
+        }
+        return { ok:false, high:0 };
+      }
+
+      let flushSuit = null;
+      for (const [s, ct] of suitCounts.entries()){
+        if (ct >= 5){ flushSuit = s; break; }
+      }
+
+      const straight = hasStraight(uniqueRanks);
+
+      if (flushSuit){
+        const suited = cards.filter(c => c.s === flushSuit).map(c => RANK_VAL[c.r]);
+        const sf = hasStraight(suited);
+        if (sf.ok){
+          const suitedSet = new Set(suited);
+          const isRoyal = sf.high === 14 && suitedSet.has(10) && suitedSet.has(11) && suitedSet.has(12) && suitedSet.has(13);
+          return isRoyal ? { cat: 1, name: "Royal Flush" } : { cat: 2, name: "Straight Flush" };
+        }
+      }
+
+      const counts = Array.from(rankCounts.values()).sort((a,b)=>b-a);
+      const has4 = counts[0] === 4;
+      const has3 = counts[0] === 3;
+      const pairCount = counts.filter(x => x === 2).length;
+      const tripleCount = counts.filter(x => x === 3).length;
+
+      if (has4) return { cat: 3, name: "Four of a Kind" };
+      if (has3 && (pairCount >= 1 || tripleCount >= 2)) return { cat: 4, name: "Full House" };
+      if (flushSuit) return { cat: 5, name: "Flush" };
+      if (straight.ok) return { cat: 6, name: "Straight" };
+      if (has3) return { cat: 7, name: "Three of a Kind" };
+      if (pairCount >= 2) return { cat: 8, name: "Two Pair" };
+      if (pairCount === 1) return { cat: 9, name: "One Pair" };
+      return { cat: 10, name: "High Card" };
+    }
+
+    const els = {
+      handMeta: document.getElementById("handMeta"),
+      streetBadge: document.getElementById("streetBadge"),
+      playersTitle: document.getElementById("playersTitle"),
+      seatList: document.getElementById("seatList"),
+      streetLabel: document.getElementById("streetLabel"),
+      boardCards: document.getElementById("boardCards"),
+      potAmount: document.getElementById("potAmount"),
+      actionLine: document.getElementById("actionLine"),
+      heroCards: document.getElementById("heroCards"),
+      heroStackTop: document.getElementById("heroStackTop"),
+      rankSheet: document.getElementById("rankSheet"),
+      potOddsSummary: document.getElementById("potOddsSummary"),
+      madeHandSummary: document.getElementById("madeHandSummary"),
+      minRaiseSummary: document.getElementById("minRaiseSummary"),
+      minRaiseLabel: document.getElementById("minRaiseLabel"),
+      timerVal: document.getElementById("timerVal"),
+      timerFill: document.getElementById("timerFill"),
+      raiseLabel: document.getElementById("raiseLabel"),
+      raiseInput: document.getElementById("raiseInput"),
+      raiseSlider: document.getElementById("raiseSlider"),
+      sliderFill: document.getElementById("sliderFill"),
+      raiseUp: document.getElementById("raiseUp"),
+      raiseDown: document.getElementById("raiseDown"),
+      raiseLimits: document.getElementById("raiseLimits"),
+      btnFold: document.getElementById("btnFold"),
+      btnCall: document.getElementById("btnCall"),
+      btnRaise: document.getElementById("btnRaise"),
+      ranksOverlay: document.getElementById("ranksOverlay"),
+      ranksClose: document.getElementById("ranksClose"),
+      handRankingTrigger: document.getElementById("handRankingTrigger"),
+      toast: document.getElementById("toast"),
+      sidebarWrapper: document.getElementById("sidebarWrapper"),
+      sidebarToggle: document.getElementById("sidebarToggle"),
+      sidebarPanel: document.getElementById("sidebarPanel"),
+      sidebarPrelayers: document.getElementById("sidebarPrelayers")
+    };
+
+    function seatIconSVG(){
+      return `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      `;
+    }
+
+    const ROTATING_TURN_TEXTS = ["Your turn", "It's on you", "Action!"];
+    let turnRotateInterval = null;
+
+    function buildTurnRotatingHTML(text, staggerFromLast = true, staggerMs = 28) {
+      const words = text.split(" ");
+      let charIndex = 0;
+      const allChars = [];
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        for (const c of word) {
+          allChars.push({ char: c, index: charIndex++ });
+        }
+        if (i < words.length - 1) allChars.push({ space: true });
+      }
+      const total = charIndex;
+      let html = "";
+      for (const item of allChars) {
+        if (item.space) {
+          html += '<span class="rt-space"> </span>';
+          continue;
+        }
+        const delay = staggerFromLast ? (total - 1 - item.index) * staggerMs : item.index * staggerMs;
+        html += `<span class="rt-char" style="animation-delay: ${delay}ms">${escapeHtml(item.char)}</span>`;
+      }
+      return `<span class="rt-word" style="overflow:hidden"><span class="rt-inner">${html}</span></span>`;
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function initTurnRotatingText() {
+      const wrap = document.getElementById("turnRotateWrap");
+      if (!wrap) {
+        if (turnRotateInterval) { clearInterval(turnRotateInterval); turnRotateInterval = null; }
+        return;
+      }
+      if (turnRotateInterval) clearInterval(turnRotateInterval);
+      let idx = 0;
+      function show() {
+        const nextText = ROTATING_TURN_TEXTS[(idx + 1) % ROTATING_TURN_TEXTS.length];
+        const chars = wrap.querySelectorAll(".rt-char");
+        if (chars.length > 0) {
+          chars.forEach((c, i) => {
+            c.style.animationDelay = i * 22 + "ms";
+            c.classList.add("rt-exit");
+          });
+          chars[chars.length - 1].addEventListener("animationend", function handler() {
+            wrap.innerHTML = buildTurnRotatingHTML(nextText);
+            idx = (idx + 1) % ROTATING_TURN_TEXTS.length;
+          }, { once: true });
+        } else {
+          wrap.innerHTML = buildTurnRotatingHTML(ROTATING_TURN_TEXTS[idx]);
+          idx = (idx + 1) % ROTATING_TURN_TEXTS.length;
+        }
+      }
+      wrap.innerHTML = buildTurnRotatingHTML(ROTATING_TURN_TEXTS[0]);
+      idx = 1;
+      turnRotateInterval = setInterval(show, 2200);
+    }
+
+    function renderSeats(){
+      els.playersTitle.textContent = `Players (${state.players.length})`;
+      els.seatList.innerHTML = state.players.map(p => {
+        const isHero = p.name === state.hero.name;
+        const turn = p.isTurn ? "turn" : "";
+        const timerTag = (p.isTurn && isHero)
+          ? `<span class="t mono" id="turnSeatTimer">${state.turnTimer.left}s</span>`
+          : "";
+        const cls = (p.isTurn && isHero)
+          ? (state.turnTimer.left <= 5 ? "turn-tag danger" : state.turnTimer.left <= 10 ? "turn-tag warn" : "turn-tag")
+          : "turn-tag";
+
+        return `
+          <div class="seat ${turn}">
+            <div class="avatar" style="${isHero ? 'border-color: rgba(253,181,21,0.22);' : ''}">
+              ${seatIconSVG()}
+            </div>
+            <div class="seat-main">
+              <div class="seat-name">
+                <span>${p.name}</span>
+                <span class="pos">${p.position}</span>
+              </div>
+              <div class="stack mono">${money(p.stack)}</div>
+            </div>
+            <div class="seat-right">
+              ${p.isTurn && isHero ? `<span class="${cls}"><span id="turnRotateWrap" class="rt-wrap"></span>${timerTag}</span>` : ``}
+            </div>
+          </div>
+          `;
+      }).join("");
+      initTurnRotatingText();
+    }
+
+    function renderCard(card, size="", extraCls=""){
+      if(!card){
+        return `<div class="card back ${extraCls} ${size}" aria-label="Hidden card"></div>`;
+      }
+      const color = COLORS[card.s];
+      const suit = SUITS[card.s];
+      return `
+        <div class="card ${color} ${size} ${extraCls}" aria-label="${card.r}${suit}">
+          <div class="rank">${card.r}</div>
+          <div class="suit">${suit}</div>
+        </div>
+      `;
+    }
+
+    function renderBoard(){
+      const visible = visibleBoardCount();
+
+      els.boardCards.innerHTML = state.board.map((c, idx) => {
+        if (idx < visible) return renderCard(c);
+        const extra = (visible > 0) ? "future" : "";
+        return renderCard(null, "", extra);
+      }).join("");
+
+      els.streetLabel.textContent = `${streetLabel(state.street)} · Board`;
+      els.streetBadge.textContent = streetLabel(state.street);
+    }
+
+    function renderHero(){
+      els.heroCards.innerHTML = state.hero.cards.map(c => renderCard(c)).join("");
+      els.heroStackTop.textContent = money(state.hero.stack);
+      const heroP = state.players.find(p => p.name === state.hero.name);
+      if (heroP) heroP.stack = state.hero.stack;
+    }
+
+    function renderActionLine(){
+      els.actionLine.innerHTML = `<strong>${state.lastAction.player}</strong> ${state.lastAction.text} <span class="hl">${money(state.lastAction.amount)}</span>`;
+    }
+
+    const RANKING_ROWS = [
+      { cat: 1, name: "Royal Flush", sub: "A K Q J 10 same suit", cards: [{r:"A",s:"d"},{r:"K",s:"d"},{r:"Q",s:"d"},{r:"J",s:"d"},{r:"10",s:"d"}] },
+      { cat: 2, name: "Straight Flush", sub: "5 in a row, same suit", cards: [{r:"J",s:"s"},{r:"10",s:"s"},{r:"9",s:"s"},{r:"8",s:"s"},{r:"7",s:"s"}] },
+      { cat: 3, name: "Four of a Kind", sub: "4 of the same rank", cards: [{r:"9",s:"h"},{r:"9",s:"c"},{r:"9",s:"d"},{r:"9",s:"s"},{r:"K",s:"h"}] },
+      { cat: 4, name: "Full House", sub: "3 of a kind + a pair", cards: [{r:"A",s:"h"},{r:"A",s:"c"},{r:"A",s:"d"},{r:"3",s:"s"},{r:"3",s:"h"}] },
+      { cat: 5, name: "Flush", sub: "Any 5, same suit", cards: [{r:"K",s:"c"},{r:"10",s:"c"},{r:"8",s:"c"},{r:"7",s:"c"},{r:"5",s:"c"}] },
+      { cat: 6, name: "Straight", sub: "5 in a row", cards: [{r:"10",s:"h"},{r:"9",s:"c"},{r:"8",s:"d"},{r:"7",s:"s"},{r:"6",s:"h"}] },
+      { cat: 7, name: "Three of a Kind", sub: "3 of the same rank", cards: [{r:"7",s:"h"},{r:"7",s:"d"},{r:"7",s:"c"},{r:"Q",s:"s"},{r:"3",s:"h"}] },
+      { cat: 8, name: "Two Pair", sub: "2 pairs", cards: [{r:"J",s:"h"},{r:"J",s:"c"},{r:"5",s:"d"},{r:"5",s:"s"},{r:"7",s:"h"}] },
+      { cat: 9, name: "One Pair", sub: "1 pair", cards: [{r:"A",s:"h"},{r:"A",s:"c"},{r:"K",s:"d"},{r:"J",s:"s"},{r:"7",s:"h"}] },
+      { cat: 10, name: "High Card", sub: "No other hand", cards: [{r:"K",s:"h"},{r:"8",s:"c"},{r:"Q",s:"d"},{r:"2",s:"s"},{r:"7",s:"h"}] }
+    ];
+
+    function renderRankSheet(activeCat){
+      els.rankSheet.innerHTML = RANKING_ROWS.map(row => {
+        const active = row.cat === activeCat ? "active" : "";
+        const cards = row.cards.map(c => renderCard(c, "sm")).join("");
+        return `
+          <div class="rank-row ${active}" data-cat="${row.cat}">
+            <div class="rank-left">
+              <div class="rank-num mono">${row.cat}</div>
+              <div>
+                <div class="rank-name">${row.name}</div>
+                <div class="rank-sub">${row.sub}</div>
+              </div>
+            </div>
+            <div class="rank-cards" aria-hidden="true">${cards}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function computeMadeHand(){
+      const visible = visibleBoardCount();
+      const boardVisible = state.board.slice(0, visible).filter(Boolean);
+      const all = [...state.hero.cards, ...boardVisible];
+      return evaluateCategory(all);
+    }
+
+    function setRaiseTo(value, opts = {}) {
+      const toCall = getToCall();
+      const min = (toCall > 0) ? getMinRaiseTo() : Math.min(state.blinds.bb, getMaxRaiseTo());
+      const max = getMaxRaiseTo();
+      const v = clamp(Math.floor(value || 0), min, max);
+      els.raiseInput.value = String(v);
+      els.raiseSlider.value = String(v);
+      updateSliderFill();
+      if (!opts.silent) renderNumbers();
+    }
+
+    function updateSliderFill(){
+      if (!els.sliderFill) return;
+      const min = Number(els.raiseSlider.min) || 0;
+      const max = Number(els.raiseSlider.max) || 100;
+      const val = Number(els.raiseSlider.value) || min;
+      const range = max - min;
+      const pct = range <= 0 ? 0 : ((val - min) / range) * 100;
+      els.sliderFill.style.width = `${pct}%`;
+    }
+
+    function renderNumbers(){
+      const toCall = getToCall();
+      const minRaiseTo = getMinRaiseTo();
+      const maxRaiseTo = getMaxRaiseTo();
+      const potOdds = getPotOddsText();
+      const made = computeMadeHand();
+
+      els.potAmount.textContent = money(state.pot);
+      els.potOddsSummary.textContent = potOdds;
+      els.madeHandSummary.textContent = made.name.toUpperCase();
+
+      const minActionTo = (toCall > 0)
+        ? minRaiseTo
+        : Math.min(state.blinds.bb, maxRaiseTo);
+
+      els.minRaiseSummary.textContent = money(minActionTo);
+      els.minRaiseLabel.textContent = (toCall > 0) ? "Min Raise" : "Min Bet";
+
+      const min = (toCall > 0) ? minRaiseTo : Math.min(state.blinds.bb, maxRaiseTo);
+      const max = maxRaiseTo;
+
+      els.raiseInput.min = String(min);
+      els.raiseInput.max = String(max);
+      els.raiseSlider.min = String(min);
+      els.raiseSlider.max = String(max);
+      els.raiseLimits.textContent = `min ${min} · max ${max}`;
+
+      const defaultRaiseTo = clamp(
+        Number(els.raiseInput.value || min),
+        min,
+        max
+      );
+      setRaiseTo(defaultRaiseTo, { silent: true });
+
+      els.btnCall.innerHTML = toCall <= 0
+        ? `Check`
+        : `Call <span class="amt mono">${money(toCall)}</span>`;
+      els.btnCall.disabled = (toCall > state.hero.stack);
+
+      const raiseTo = Number(els.raiseInput.value);
+      const raiseLabel = (toCall <= 0) ? "Bet" : "Raise to";
+      els.raiseLabel.textContent = raiseLabel;
+      els.btnRaise.innerHTML = `${raiseLabel} <span class="amt mono">${money(raiseTo)}</span>`;
+      els.btnRaise.disabled = (raiseTo < min || raiseTo > max);
+
+      renderSeats();
+      renderRankSheet(made.cat);
+    }
+
+    let toastTimer = null;
+    function toast(msg, type="success"){
+      const bg = type === "danger" ? "rgba(239,68,68,0.92)" :
+                 type === "warning" ? "rgba(245,158,11,0.92)" :
+                 "rgba(34,197,94,0.92)";
+      els.toast.style.background = bg;
+      els.toast.style.color = "#fff";
+      els.toast.textContent = msg;
+
+      els.toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => els.toast.classList.remove("show"), 1100);
+    }
+
+    function resetTurnTimer(){
+      state.turnTimer.left = state.turnTimer.total;
+      updateTimerUI();
+    }
+
+    function updateTimerUI(){
+      const t = state.turnTimer.left;
+      const pct = (t / state.turnTimer.total) * 100;
+
+      els.timerVal.textContent = `${t}s`;
+      els.timerFill.style.width = `${pct}%`;
+
+      if (t <= 5){
+        els.timerFill.style.background = "rgba(239,68,68,0.92)";
+      } else if (t <= 10){
+        els.timerFill.style.background = "rgba(245,158,11,0.92)";
+      } else {
+        els.timerFill.style.background = "rgba(34,197,94,0.92)";
+      }
+    }
+
+    function stopTurnTimer(){
+      state.turnTimer.running = false;
+      if (state.turnTimer._interval){
+        clearInterval(state.turnTimer._interval);
+        state.turnTimer._interval = null;
+      }
+    }
+
+    function startTurnTimer(){
+      stopTurnTimer();
+      resetTurnTimer();
+      state.turnTimer.running = true;
+
+      state.turnTimer._interval = setInterval(() => {
+        if (!state.hero.isTurn){
+          stopTurnTimer();
+          return;
+        }
+        state.turnTimer.left = Math.max(0, state.turnTimer.left - 1);
+        updateTimerUI();
+
+        const seatTimer = document.getElementById("turnSeatTimer");
+        if (seatTimer) seatTimer.textContent = `${state.turnTimer.left}s`;
+
+        if (state.turnTimer.left === 0){
+          stopTurnTimer();
+          const toCall = getToCall();
+          if (toCall <= 0) {
+            toast("TIMEOUT — CHECK", "warning");
+            doCallOrCheck(true);
+          } else {
+            toast("TIMEOUT — FOLD", "danger");
+            doFold(true);
+          }
+        }
+      }, 1000);
+    }
+
+    function endHeroTurn(){
+      state.hero.isTurn = false;
+      state.players.forEach(p => p.isTurn = false);
+      stopTurnTimer();
+    }
+
+    function doFold(isAuto=false){
+      endHeroTurn();
+      state.lastAction = { player: state.hero.name, text: isAuto ? "timed out (fold)" : "folded", amount: 0 };
+      if (!isAuto) toast("FOLDED", "danger");
+      renderAll();
+    }
+
+    function doCallOrCheck(isAuto=false){
+      const toCall = getToCall();
+      if (toCall <= 0){
+        endHeroTurn();
+        state.lastAction = { player: state.hero.name, text: isAuto ? "timed out (check)" : "checked", amount: 0 };
+        if (!isAuto) toast("CHECKED", "success");
+        renderAll();
+        return;
+      }
+      if (toCall > state.hero.stack){
+        toast("NOT ENOUGH CHIPS", "warning");
+        return;
+      }
+
+      state.hero.stack -= toCall;
+      state.hero.committed += toCall;
+      state.pot += toCall;
+
+      endHeroTurn();
+      state.lastAction = { player: state.hero.name, text: "called", amount: toCall };
+      if (!isAuto) toast(`CALLED ${money(toCall)}`, "success");
+      renderAll();
+    }
+
+    function doRaiseTo(){
+      const toCall = getToCall();
+      const minRaiseTo = (toCall > 0) ? getMinRaiseTo() : Math.min(state.blinds.bb, getMaxRaiseTo());
+      const maxRaiseTo = getMaxRaiseTo();
+
+      const raiseTo = Number(els.raiseInput.value || 0);
+
+      if (raiseTo < minRaiseTo){
+        toast(`MIN IS ${money(minRaiseTo)}`, "warning");
+        return;
+      }
+      if (raiseTo > maxRaiseTo){
+        toast("NOT ENOUGH CHIPS", "warning");
+        return;
+      }
+
+      const add = raiseTo - state.hero.committed;
+      if (add > state.hero.stack){
+        toast("NOT ENOUGH CHIPS", "warning");
+        return;
+      }
+
+      state.hero.stack -= add;
+      state.hero.committed = raiseTo;
+      state.pot += add;
+
+      state.previousBet = state.currentBet;
+      state.currentBet = raiseTo;
+
+      endHeroTurn();
+      state.lastAction = { player: state.hero.name, text: (toCall <= 0 ? "bet" : "raised to"), amount: raiseTo };
+      toast(`${toCall <= 0 ? "BET" : "RAISED TO"} ${money(raiseTo)}`, "success");
+      renderAll();
+    }
+
+    function quickSize(mult){
+      const toCall = getToCall();
+      const maxRaiseTo = getMaxRaiseTo();
+      const minRaiseTo = (toCall > 0) ? getMinRaiseTo() : Math.min(state.blinds.bb, maxRaiseTo);
+
+      if (mult === "max"){
+        setRaiseTo(maxRaiseTo);
+        return;
+      }
+
+      const effective = state.pot + toCall;
+      const add = Math.floor(effective * Number(mult));
+      const target = state.currentBet + add;
+      setRaiseTo(clamp(target, minRaiseTo, maxRaiseTo));
+    }
+
+    function openRanks(){
+      document.body.classList.add("modal-open");
+      els.ranksOverlay.classList.add("active");
+      els.ranksOverlay.setAttribute("aria-hidden", "false");
+      setTimeout(() => {
+        const active = els.rankSheet.querySelector(".rank-row.active");
+        if (active) active.scrollIntoView({ block: "center" });
+      }, 50);
+    }
+
+    function closeRanks(){
+      document.body.classList.remove("modal-open");
+      els.ranksOverlay.classList.remove("active");
+      els.ranksOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    let sidebarOpen = false;
+
+    function openSidebar(){
+      if (!els.sidebarWrapper || !els.sidebarToggle) return;
+      if (sidebarOpen) return;
+      sidebarOpen = true;
+      document.body.classList.add("sidebar-open");
+      els.sidebarWrapper.setAttribute("data-open", "");
+      els.sidebarToggle.setAttribute("aria-expanded", "true");
+      els.sidebarToggle.setAttribute("aria-label", "Close menu");
+      if (els.sidebarPanel) els.sidebarPanel.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeSidebar(){
+      if (!sidebarOpen) return;
+      sidebarOpen = false;
+      document.body.classList.remove("sidebar-open");
+      if (els.sidebarWrapper) els.sidebarWrapper.removeAttribute("data-open");
+      if (els.sidebarToggle) {
+        els.sidebarToggle.setAttribute("aria-expanded", "false");
+        els.sidebarToggle.setAttribute("aria-label", "Open menu");
+      }
+      if (els.sidebarPanel) els.sidebarPanel.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+    }
+
+    function toggleSidebar(){
+      if (sidebarOpen) closeSidebar();
+      else openSidebar();
+    }
+
+    function renderAll(){
+      els.handMeta.textContent = `Hand #${state.handNumber} · Blinds ${money(state.blinds.sb)}/${money(state.blinds.bb)}`;
+      renderBoard();
+      renderHero();
+      renderActionLine();
+      renderNumbers();
+      syncChromeHeights();
+
+      if (state.hero.isTurn) startTurnTimer();
+      else stopTurnTimer();
+    }
+
+    /* ✅ Sync BOTH topbar and actionbar heights so the 62/38 split stays correct */
+    function syncChromeHeights(){
+      const ab = document.querySelector(".actionbar");
+      if (ab){
+        const h = ab.offsetHeight;
+        document.documentElement.style.setProperty("--actionbar-h", `${h}px`);
+      }
+      const tb = document.querySelector(".topbar");
+      if (tb){
+        const th = tb.offsetHeight;
+        document.documentElement.style.setProperty("--topbar-h", `${th}px`);
+      }
+    }
+
+    els.raiseInput.addEventListener("input", () => setRaiseTo(Number(els.raiseInput.value), { silent: true }));
+    els.raiseInput.addEventListener("change", () => renderNumbers());
+    els.raiseSlider.addEventListener("input", () => setRaiseTo(Number(els.raiseSlider.value), { silent: true }));
+    els.raiseSlider.addEventListener("change", () => renderNumbers());
+
+    const RAISE_STEP = 5;
+    if (els.raiseUp) els.raiseUp.addEventListener("click", () => {
+      const min = Number(els.raiseInput.min) || 0;
+      const max = Number(els.raiseInput.max) || 100;
+      const cur = Number(els.raiseInput.value) || min;
+      setRaiseTo(Math.min(cur + RAISE_STEP, max));
+    });
+    if (els.raiseDown) els.raiseDown.addEventListener("click", () => {
+      const min = Number(els.raiseInput.min) || 0;
+      const cur = Number(els.raiseInput.value) || min;
+      setRaiseTo(Math.max(cur - RAISE_STEP, min));
+    });
+
+    document.querySelectorAll(".pill-btn").forEach(btn => {
+      btn.addEventListener("click", () => quickSize(btn.dataset.mult));
+    });
+
+    els.btnFold.addEventListener("click", () => doFold(false));
+    els.btnCall.addEventListener("click", () => doCallOrCheck(false));
+    els.btnRaise.addEventListener("click", doRaiseTo);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+      const k = e.key.toLowerCase();
+      if (k === "escape") { if (sidebarOpen) closeSidebar(); else closeRanks(); return; }
+      if (k === "f") doFold(false);
+      if (k === "c") doCallOrCheck(false);
+      if (k === "r") doRaiseTo();
+    });
+
+    if (els.handRankingTrigger) {
+      els.handRankingTrigger.addEventListener("click", openRanks);
+      els.handRankingTrigger.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRanks(); } });
+    }
+
+    els.ranksClose.addEventListener("click", closeRanks);
+
+    if (els.sidebarToggle) els.sidebarToggle.addEventListener("click", toggleSidebar);
+    document.addEventListener("mousedown", (e) => {
+      if (!sidebarOpen) return;
+      const panel = els.sidebarPanel;
+      const toggle = els.sidebarToggle;
+      if (panel && !panel.contains(e.target) && toggle && !toggle.contains(e.target)) closeSidebar();
+    });
+    document.querySelectorAll(".sidebar-item").forEach(a => {
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        const action = a.dataset.action;
+        if (action === "ranking") { openRanks(); closeSidebar(); }
+        else if (action === "table") closeSidebar();
+        else if (action === "rules") { toast("Rules coming soon", "warning"); closeSidebar(); }
+        else if (action === "leave") { toast("Left the game", "warning"); closeSidebar(); window.location.href = "/"; }
+      });
+    });
+    els.ranksOverlay.addEventListener("click", (e) => {
+      if (e.target === els.ranksOverlay) closeRanks();
+    });
+
+    window.addEventListener("resize", syncChromeHeights);
+
+    function initRaise(){
+      const toCall = getToCall();
+      const max = getMaxRaiseTo();
+      const min = (toCall > 0) ? getMinRaiseTo() : Math.min(state.blinds.bb, max);
+      els.raiseInput.value = String(clamp(min, min, max));
+      els.raiseSlider.value = els.raiseInput.value;
+    }
+
+    initRaise();
+    updateTimerUI();
+    syncChromeHeights();
+    renderAll();
+  </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Berkeley Poker — Live Table</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --cal-blue:#003262;
+  --cal-gold:#FDB515;
+  --bg:#000814;
+  --surface:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08);
+}
+
+body{
+  font-family:"Work Sans",sans-serif;
+  background:linear-gradient(135deg,#001a3d,#000814);
+  color:#fff;
+}
+
+.board{
+  padding:40px;
+  display:flex;
+  justify-content:center;
+}
+
+.cards{
+  display:flex;
+  gap:12px;
+}
+
+.card{
+  width:74px;
+  height:108px;
+  border-radius:14px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+  font-weight:900;
+  box-shadow:0 8px 20px rgba(0,0,0,.4);
+}
+
+.card.red{color:#dc2626;}
+.card.black{color:#111;}
+
+.rank{font-size:18px;}
+.suit{font-size:34px;margin-top:auto;}
+
+.card.back{
+  background:linear-gradient(135deg,#003262,#001a3d);
+  border:1px solid rgba(255,255,255,.15);
+}
+
+/* ✅ 右侧未来牌变短 */
+.card.back.future{
+  height:96px;
+}
+
+/* 移动端同步 */
+@media(max-width:640px){
+  .card,.card.back{width:56px;height:82px;padding:8px;}
+  .card.back.future{height:72px;}
+}
+
+@media(max-width:480px){
+  .card,.card.back{width:50px;height:72px;padding:6px;}
+  .card.back.future{height:62px;}
+}
+</style>
+</head>
+
+<body>
+
+<div class="board">
+  <div class="cards" id="boardCards"></div>
+</div>
+
+<script>
+const SUITS={h:"♥",d:"♦",c:"♣",s:"♠"};
+const COLORS={h:"red",d:"red",c:"black",s:"black"};
+
+const state={
+  street:"FLOP",
+  board:[
+    {r:"2",s:"h"},
+    {r:"K",s:"c"},
+    {r:"8",s:"d"},
+    null,
+    null
+  ]
+};
+
+function visibleBoardCount(){
+  if(state.street==="PRE_FLOP") return 0;
+  if(state.street==="FLOP") return 3;
+  if(state.street==="TURN") return 4;
+  if(state.street==="RIVER") return 5;
+  return 0;
+}
+
+function renderCard(card,extraCls=""){
+  if(!card){
+    return `<div class="card back ${extraCls}"></div>`;
+  }
+  const color=COLORS[card.s];
+  const suit=SUITS[card.s];
+  return `
+    <div class="card ${color}">
+      <div class="rank">${card.r}</div>
+      <div class="suit">${suit}</div>
+    </div>
+  `;
+}
+
+function renderBoard(){
+  const visible=visibleBoardCount();
+
+  document.getElementById("boardCards").innerHTML=
+    state.board.map((c,idx)=>{
+      if(idx<visible){
+        return renderCard(c);
+      }
+      const extra=visible>0?"future":"";
+      return renderCard(null,extra);
+    }).join("");
+}
+
+renderBoard();
+</script>
+
+</body>
+</html>
