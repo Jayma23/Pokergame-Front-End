@@ -1,6 +1,10 @@
-# Berkeley Poker — Live Table
+# Berkeley Poker
 
-扑克牌桌模拟界面，支持部署到多种平台。
+扑克牌大厅 + 牌桌模拟界面，支持部署到多种平台。
+
+- **lobby.html** — 大厅（选桌、Quick Seat、Join Code、创建桌）
+- **index.html** — 牌桌游戏
+- **board.html** — 牌面展示演示
 
 ## 快速部署（选一种即可）
 

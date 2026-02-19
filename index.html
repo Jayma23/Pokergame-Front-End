@@ -979,6 +979,8 @@
       border-radius: var(--r-sm);
       transition: background 0.15s ease, border-color 0.15s ease;
     }
+    .decrypt-encrypted{ opacity: 0.75; color: var(--cal-gold); }
+    .decrypt-revealed{ opacity: 1; }
     .ds-hand:hover{
       background: rgba(253,181,21,0.12);
       border-color: rgba(253,181,21,0.25);
@@ -2026,6 +2028,52 @@
       }).join("");
     }
 
+    let _decryptInterval = null;
+    let _lastDecryptText = "";
+    function decryptTextTo(el, text, opts = {}){
+      if(!el) return;
+      const target = String(text);
+      if(target === _lastDecryptText && el.textContent) return;
+      _lastDecryptText = target;
+      if(_decryptInterval){ clearInterval(_decryptInterval); _decryptInterval = null; }
+      const speed = opts.speed ?? 55;
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?";
+      const totalLetters = target.replace(/\s/g, "").length;
+      let revealed = new Set();
+
+      function shuffle(){
+        return target.split("").map((c, i) => {
+          if(c === " ") return " ";
+          if(revealed.has(i)) return c;
+          return chars[Math.floor(Math.random() * chars.length)];
+        }).join("");
+      }
+
+      function render(displayText){
+        el.innerHTML = displayText.split("").map((c, i) => {
+          const rev = revealed.has(i);
+          return `<span class="${rev ? "decrypt-revealed" : "decrypt-encrypted"}">${c === " " ? "\u00A0" : c}</span>`;
+        }).join("");
+      }
+
+      render(shuffle());
+      _decryptInterval = setInterval(() => {
+        if(revealed.size >= totalLetters){
+          clearInterval(_decryptInterval);
+          _decryptInterval = null;
+          render(target);
+          return;
+        }
+        for(let i = 0; i < target.length; i++){
+          if(target[i] !== " " && !revealed.has(i)){
+            revealed.add(i);
+            break;
+          }
+        }
+        render(shuffle());
+      }, speed);
+    }
+
     function computeMadeHand(){
       const visible = visibleBoardCount();
       const boardVisible = state.board.slice(0, visible).filter(Boolean);
@@ -2063,7 +2111,7 @@
 
       els.potAmount.textContent = money(state.pot);
       els.potOddsSummary.textContent = potOdds;
-      els.madeHandSummary.textContent = made.name.toUpperCase();
+      decryptTextTo(els.madeHandSummary, made.name.toUpperCase());
 
       const minActionTo = (toCall > 0)
         ? minRaiseTo
@@ -2413,9 +2461,9 @@
         e.preventDefault();
         const action = a.dataset.action;
         if (action === "ranking") { openRanks(); closeSidebar(); }
-        else if (action === "table") closeSidebar();
+        else if (action === "table") { closeSidebar(); window.location.href = "lobby.html"; }
         else if (action === "rules") { toast("Rules coming soon", "warning"); closeSidebar(); }
-        else if (action === "leave") { toast("Left the game", "warning"); closeSidebar(); window.location.href = "/"; }
+        else if (action === "leave") { toast("Left the game", "warning"); closeSidebar(); window.location.href = "lobby.html"; }
       });
     });
     els.ranksOverlay.addEventListener("click", (e) => {
